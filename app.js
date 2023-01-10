@@ -1,11 +1,11 @@
-let express = require("express");
-let { open } = require("sqlite");
-let sqlite3 = require("sqlite3");
-let path = require("path");
-
-let app = express();
-let dbPath = path.join(__dirname, "cricketTeam.db");
+const express = require("express");
+const { open } = require("sqlite");
+const sqlite3 = require("sqlite3");
+const app = express();
 app.use(express.json());
+
+const path = require("path");
+const dbPath = path.join(__dirname, "cricketTeam.db");
 let db = null;
 
 const initializeDBAndServer = async () => {
@@ -15,65 +15,106 @@ const initializeDBAndServer = async () => {
       driver: sqlite3.Database,
     });
     app.listen(3000, () => {
-      console.log("Server is running");
+      console.log("server running at http://localpost:3000");
     });
   } catch (e) {
-    console.log(e.message);
+    console.log(`DB error : ${e.message}`);
     process.exit(1);
   }
 };
-
 initializeDBAndServer();
-
-function getCamelCaseObject(eachPlayer) {
+const getCamelCaseObject = (eachPlayer) => {
   return {
     playerId: eachPlayer.player_id,
     playerName: eachPlayer.player_name,
     jerseyNumber: eachPlayer.jersey_number,
     role: eachPlayer.role,
   };
-}
+};
 
+//getAllPlayers API
 app.get("/players/", async (request, response) => {
-  let getAllPlayersDetails = `SELECT * FROM cricket_team;`;
-
-  let dbResponse = await db.all(getAllPlayersDetails);
-  let players = dbResponse.map((eachPlayer) => getCamelCaseObject(eachPlayer));
+  const getAllPlayersQuery = `SELECT * FROM cricket_team ORDER BY player_id;`;
+  const playersArray = await db.all(getAllPlayersQuery);
+  let players = playersArray.map((eachPlayer) =>
+    getCamelCaseObject(eachPlayer)
+  );
   response.send(players);
 });
 
+//getPlayer API
+app.get("/players/:playerId/", async (request, response) => {
+  const { playerId } = request.params;
+  const getPlayerQuery = `
+    SELECT 
+      * 
+    FROM 
+      cricket_team 
+    WHERE 
+      player_id = ${playerId};`;
+  const player = await db.get(getPlayerQuery);
+  response.send(getCamelCaseObject(player));
+});
+
+//postPlayer API
 app.post("/players/", async (request, response) => {
-  let postingData = ` INSERT INTO cricket_team(player_name,jersey_number,role) 
-       VALUES ("Vishal",${17},"Bowler");`;
-  const dbResponse = db.run(postingData);
+  const playerDetails = request.body;
+  const { playerName, jerseyNumber, role } = request.body;
+  const postPlayerQuery = `
+  INSERT INTO
+    cricket_team (player_name, jersey_number, role)
+  VALUES
+    ('${playerName}', ${jerseyNumber}, '${role}');`;
+  const player = await db.run(postPlayerQuery);
   response.send("Player Added to Team");
 });
 
-app.get("/players/:playerId/", async (request, response) => {
-  let { playerId } = request.params;
-  let getPlayerDetails = `SELECT * FROM cricket_team WHERE player_id = ${playerId}`;
-
-  let playerArray = await db.get(getPlayerDetails);
-  let playerD = getCamelCaseObject(playerArray);
-  response.send(playerD);
-});
-
+//updatePlayer API
 app.put("/players/:playerId/", async (request, response) => {
-  let { playerId } = request.params;
-  let updating = `UPDATE cricket_team SET 
-    player_name="Maneesh",jersey_number=${54},role="All-rounder" WHERE player_id = ${playerId} ;`;
-  await db.run(updating);
+  const { playerName, jerseyNumber, role } = request.body;
+  const { playerId } = request.params;
+  const updatePlayerQuery = `
+  UPDATE
+    cricket_team
+  SET
+    player_name = '${playerName}',
+    jersey_number = ${jerseyNumber},
+    role = '${role}'
+  WHERE
+    player_id = ${playerId};`;
+
+  await db.run(updatePlayerQuery);
   response.send("Player Details Updated");
 });
 
+app.put("/players/:playerId/", async (request, response) => {
+  const { playerName, jerseyNumber, role } = request.body;
+  const { playerId } = request.params;
+  const updatePlayerQuery = `
+  UPDATE
+    cricket_team
+  SET
+    player_name = '${playerName}',
+    jersey_number = ${jerseyNumber},
+    role = '${role}'
+  WHERE
+    player_id = ${playerId};`;
+
+  await db.run(updatePlayerQuery);
+  response.send("Player Details Updated");
+});
+
+//deletePlayer API
 app.delete("/players/:playerId/", async (request, response) => {
   const { playerId } = request.params;
-  const deletePlayer = `
-    DELETE FROM
+  const deletePlayerQuery = `
+    DELETE FROM 
       cricket_team
-    WHERE
-      player_id = ${playerId};`;
-  await db.run(deletePlayer);
+    WHERE 
+      player_id=${playerId};`;
+  const dbResponse = await db.run(deletePlayerQuery);
+  console.log(dbResponse);
   response.send("Player Removed");
 });
+
 module.exports = app;
