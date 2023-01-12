@@ -34,12 +34,9 @@ const getCamelCaseObject = (eachPlayer) => {
 
 //getAllPlayers API
 app.get("/players/", async (request, response) => {
-  const getAllPlayersQuery = `SELECT * FROM cricket_team ORDER BY player_id;`;
+  const getAllPlayersQuery = `SELECT movie_name FROM cricket_team`;
   const playersArray = await db.all(getAllPlayersQuery);
-  let players = playersArray.map((eachPlayer) =>
-    getCamelCaseObject(eachPlayer)
-  );
-  response.send(players);
+  response.send( moviesArray.map((eachMovie) => ({ movieName: eachMovie.movie_name })));
 });
 
 //getPlayer API
